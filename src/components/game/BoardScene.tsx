@@ -9,7 +9,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import boardAsset from "@/assets/game-board.glb.asset.json";
 
-const lionAsset = { url: "/models/lion.glb" };
 const boardUrl = boardAsset.url;
 
 const SPACING = 1.15;
@@ -141,64 +140,59 @@ function PieceBase({
 
 /** Round wooden plinth every piece stands on, as in the reference art. */
 
-/** Lion piece rendered from the GLB, keeping its original materials. */
-function LionModel({ selected }: { selected: boolean }) {
-  const { scene } = useGLTF(lionAsset.url);
-  const phase = useMemo(() => Math.random() * Math.PI * 2, []);
-  const swayRef = useRef<THREE.Group>(null);
-  const breathRef = useRef<THREE.Group>(null);
+useGLTF.preload(boardUrl);
 
-  const model = useMemo(() => {
-    const clone = SkeletonUtils.clone(scene) as THREE.Object3D;
-    clone.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (m.isMesh) {
-        m.castShadow = true;
-        m.receiveShadow = true;
-      }
-    });
 
-    // Normalize: sit on the plinth, face +Z, consistent height.
-    const box = new THREE.Box3().setFromObject(clone);
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
-    const scale = 0.62 / Math.max(size.y, 0.0001);
-
-    const wrapper = new THREE.Group();
-    clone.position.set(-center.x, -box.min.y, -center.z);
-    wrapper.scale.setScalar(scale);
-    wrapper.add(clone);
-
-    const outer = new THREE.Group();
-    outer.add(wrapper);
-    outer.rotation.y = -Math.PI / 2;
-    return outer;
-  }, [scene]);
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime + phase;
-    const intensity = selected ? 1 : 0.45;
-
-    if (swayRef.current) {
-      swayRef.current.rotation.y = Math.sin(t * 0.5) * 0.16 * intensity;
-      swayRef.current.rotation.z = Math.sin(t * 0.9 + 1.1) * 0.02 * intensity;
-      swayRef.current.position.y = Math.sin(t * (selected ? 2.4 : 1.3)) * 0.012 * intensity;
-    }
-    if (breathRef.current) {
-      const b = 1 + Math.sin(t * (selected ? 2.6 : 1.5)) * 0.022 * intensity;
-      breathRef.current.scale.set(b, 1 + (b - 1) * 0.6, b);
-    }
-  });
-
+function Tiger({ position, selected }: { position: [number, number, number]; selected: boolean }) {
+  const coat = selected ? "#ffb347" : "#e8862a";
+  const shade = selected ? "#e09a3c" : "#c76d1c";
   return (
-    <group position={[0, 0.075, 0]}>
-      <group ref={swayRef}>
-        <group ref={breathRef}>
-          <primitive object={model} />
-        </group>
-      </group>
+    <PieceBase position={position} selected={selected}>
+      {/* torso */}
+      <mesh castShadow position={[0, 0.3, -0.02]} rotation={[Math.PI / 2, 0, 0]}>
+        <capsuleGeometry args={[0.13, 0.28, 6, 12]} />
+        <meshStandardMaterial color={coat} roughness={0.55} />
+      </mesh>
+      {/* legs */}
+      {[
+        [-0.085, 0.12],
+        [0.085, 0.12],
+        [-0.085, -0.14],
+        [0.085, -0.14],
+      ].map(([x, z], k) => (
+        <mesh key={`tl${k}`} castShadow position={[x!, 0.17, z!]}>
+          <cylinderGeometry args={[0.036, 0.042, 0.24, 8]} />
+          <meshStandardMaterial color={shade} roughness={0.6} />
+        </mesh>
+      ))}
+      {/* head */}
+      <mesh castShadow position={[0, 0.44, 0.18]}>
+        <sphereGeometry args={[0.11, 16, 12]} />
+        <meshStandardMaterial color={coat} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.41, 0.28]}>
+        <sphereGeometry args={[0.05, 10, 8]} />
+        <meshStandardMaterial color={shade} roughness={0.55} />
+      </mesh>
+      {/* eyes */}
+      {[-0.045, 0.045].map((x) => (
+        <mesh key={`te${x}`} position={[x, 0.47, 0.25]}>
+          <sphereGeometry args={[0.015, 8, 8]} />
+          <meshStandardMaterial color="#1e1206" />
+        </mesh>
+      ))}
+      {/* ears */}
+      {[-0.08, 0.08].map((x) => (
+        <mesh key={`tear${x}`} position={[x, 0.52, 0.15]}>
+          <sphereGeometry args={[0.032, 10, 8]} />
+          <meshStandardMaterial color={shade} roughness={0.6} />
+        </mesh>
+      ))}
+      {/* tail */}
+      <mesh castShadow position={[0, 0.36, -0.22]} rotation={[0.7, 0, 0]}>
+        <capsuleGeometry args={[0.022, 0.16, 3, 8]} />
+        <meshStandardMaterial color={shade} roughness={0.6} />
+      </mesh>
       {selected && (
         <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.24, 0.3, 32]} />
@@ -211,19 +205,6 @@ function LionModel({ selected }: { selected: boolean }) {
           />
         </mesh>
       )}
-    </group>
-  );
-}
-
-
-useGLTF.preload(lionAsset.url);
-useGLTF.preload(boardUrl);
-
-
-function Tiger({ position, selected }: { position: [number, number, number]; selected: boolean }) {
-  return (
-    <PieceBase position={position} selected={selected}>
-      <LionModel selected={selected} />
     </PieceBase>
   );
 }
