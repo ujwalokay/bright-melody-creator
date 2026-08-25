@@ -65,31 +65,41 @@ function BoardModel() {
     aligned.add(clone);
     aligned.updateWorldMatrix(true, true);
 
-    // Fit from the model's real bounds (uniform scale keeps the console's
-    // proportions): its width becomes the grid width plus a frame margin, and
-    // its top face lands on the grid plane.
-    const box = new THREE.Box3().setFromObject(aligned);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
+    // Fit the console by its play SCREEN (not the whole model): the screen's
+    // dark panel must cover the 5x5 grid and its surface must be the grid plane.
+    const localScreen = new THREE.Box3(
+      new THREE.Vector3(
+        SCREEN.planeX - 0.02,
+        SCREEN.centerY - SCREEN.depth / 2,
+        SCREEN.centerZ - SCREEN.width / 2,
+      ),
+      new THREE.Vector3(
+        SCREEN.planeX,
+        SCREEN.centerY + SCREEN.depth / 2,
+        SCREEN.centerZ + SCREEN.width / 2,
+      ),
+    );
+    const screenBox = localScreen.clone().applyMatrix4(aligned.matrixWorld);
+    const size = screenBox.getSize(new THREE.Vector3());
+    const center = screenBox.getCenter(new THREE.Vector3());
 
     const ms = tune("ms", 1);
-    const sx = ((2 * tune("bw", BOARD_TARGET_HALF)) / size.x) * ms;
-    const sz = ((2 * tune("bh", BOARD_TARGET_HALF)) / size.z) * ms;
+    const s = ((2 * tune("bw", BOARD_TARGET_HALF)) / Math.max(size.x, 1e-4)) * ms;
 
     const centered = new THREE.Group();
     centered.position.set(
       -center.x + tune("mx", 0),
-      -box.max.y + tune("my", 0),
+      -screenBox.max.y + tune("my", 0),
       -center.z + tune("mz", 0),
     );
     centered.add(aligned);
 
     const wrapper = new THREE.Group();
-    wrapper.scale.set(sx, sx, sz);
-
+    wrapper.scale.setScalar(s);
 
     wrapper.add(centered);
     return wrapper;
+
   }, [scene]);
 
 
