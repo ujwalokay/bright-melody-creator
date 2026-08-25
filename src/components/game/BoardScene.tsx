@@ -33,10 +33,11 @@ const SCREEN = {
   centerY: 0.1217,
   centerZ: 0.0034,
   /** Extent along the model's Y axis -> table depth after alignment. */
-  depth: 0.5946,
+  depth: 0.234,
   /** Extent along the model's Z axis -> table width after alignment. */
   width: 0.807,
 };
+
 
 
 /** The physical Bagh-Chal board (GLB), scaled so its top face is the grid plane. */
@@ -65,35 +66,33 @@ function BoardModel() {
     aligned.add(clone);
     aligned.updateWorldMatrix(true, true);
 
-    // Fit the grid to the measured screen (model space) rather than the whole
-    // chassis, so the 5x5 nodes land inside the playable panel.
-    const ms = tune("ms", 1);
-    const scaleZ = (tune("bh", BOARD_TARGET_HALF) / (SCREEN.depth / 2)) * ms;
-    const scaleX = (tune("bw", BOARD_TARGET_HALF + 0.5) / (SCREEN.width / 2)) * ms;
+    // Fit from the model's real bounds (uniform scale keeps the console's
+    // proportions): its width becomes the grid width plus a frame margin, and
+    // its top face lands on the grid plane.
+    const box = new THREE.Box3().setFromObject(aligned);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
 
-    // Put the screen's own center (and its surface plane) on the grid origin.
-    const screenCenter = new THREE.Vector3(
-      SCREEN.planeX,
-      SCREEN.centerY,
-      SCREEN.centerZ,
-    ).applyEuler(aligned.rotation);
+    const ms = tune("ms", 1);
+    const sx = ((2 * tune("bw", BOARD_TARGET_HALF)) / size.x) * ms;
+    const sz = ((2 * tune("bh", BOARD_TARGET_HALF)) / size.z) * ms;
 
     const centered = new THREE.Group();
     centered.position.set(
-      -screenCenter.x + tune("mx", 0),
-      -screenCenter.y + tune("my", 0),
-      -screenCenter.z + tune("mz", 0),
+      -center.x + tune("mx", 0),
+      -box.max.y + tune("my", 0),
+      -center.z + tune("mz", 0),
     );
-    console.log('[boardsc]', JSON.stringify({sc: screenCenter.toArray(), scaleX, scaleZ}));
     centered.add(aligned);
 
     const wrapper = new THREE.Group();
-    wrapper.scale.set(scaleX, scaleZ, scaleZ);
+    wrapper.scale.set(sx, sx, sz);
+
+
     wrapper.add(centered);
     return wrapper;
-
-
   }, [scene]);
+
 
 
   return (
