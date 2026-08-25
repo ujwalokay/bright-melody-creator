@@ -3,6 +3,7 @@ import { Environment, ContactShadows, useGLTF, OrbitControls } from "@react-thre
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import * as THREE from "three";
+import { SkeletonUtils } from "three-stdlib";
 import { SIZE, neighbors, rc, type Cell } from "@/lib/baghchal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
